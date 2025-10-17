@@ -3,10 +3,31 @@
 	This problem requires you to implement a sorting algorithm
 	you can use bubble sorting, insertion sorting, heap sorting, etc.
 */
-// I AM NOT DONE
 
-fn sort<T>(array: &mut [T]){
-	//TODO
+fn sort<T: PartialOrd>(array: &mut [T]){
+    let len = array.len();
+    if len <= 1 { return; }
+    let p = partition(array);
+    let (left, right) = array.split_at_mut(p);
+    sort(left);
+    sort(&mut right[1..]);
+}
+
+fn partition<T: PartialOrd>(array: &mut [T]) -> usize {
+    let len = array.len();
+    let mut i = 0;
+    {
+        let (slice, pivot_slice) = array.split_at_mut(len - 1);
+        let p = &pivot_slice[0];
+        for j in 0..slice.len() {
+            if &slice[j] <= p {
+                slice.swap(i, j);
+                i += 1;
+            }
+        }
+    }
+    array.swap(i, len - 1);
+    i
 }
 #[cfg(test)]
 mod tests {

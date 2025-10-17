@@ -2,19 +2,19 @@
 	single linked list merge
 	This problem requires you to merge two ordered singly linked lists into one ordered singly linked list
 */
-// I AM NOT DONE
+
 
 use std::fmt::{self, Display, Formatter};
 use std::ptr::NonNull;
 use std::vec::*;
 
 #[derive(Debug)]
-struct Node<T> {
+struct Node<T: PartialOrd> {
     val: T,
     next: Option<NonNull<Node<T>>>,
 }
 
-impl<T> Node<T> {
+impl<T: PartialOrd> Node<T> {
     fn new(t: T) -> Node<T> {
         Node {
             val: t,
@@ -23,19 +23,19 @@ impl<T> Node<T> {
     }
 }
 #[derive(Debug)]
-struct LinkedList<T> {
+struct LinkedList<T: PartialOrd> {
     length: u32,
     start: Option<NonNull<Node<T>>>,
     end: Option<NonNull<Node<T>>>,
 }
 
-impl<T> Default for LinkedList<T> {
+impl<T: PartialOrd> Default for LinkedList<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> LinkedList<T> {
+impl<T: PartialOrd> LinkedList<T> {
     pub fn new() -> Self {
         Self {
             length: 0,
@@ -69,20 +69,73 @@ impl<T> LinkedList<T> {
             },
         }
     }
-	pub fn merge(list_a:LinkedList<T>,list_b:LinkedList<T>) -> Self
+
+    fn pop_front_node(&mut self) -> Option<NonNull<Node<T>>> {
+        let head = self.start?;
+        unsafe {
+            let raw = head.as_ptr();
+            let next = (*raw).next.take();
+            self.start = next;
+            if self.start.is_none() {
+                self.end = None;
+            }
+        }
+        self.length -= 1;
+        Some(head)
+    }
+
+    fn push_back_node(&mut self, mut node: NonNull<Node<T>>) {
+        unsafe {
+            node.as_mut().next = None;
+            match self.end {
+                None => {
+                    self.start = Some(node);
+                    self.end = Some(node);
+                }
+                Some(mut tail) => {
+                    tail.as_mut().next = Some(node);
+                    self.end = Some(node);
+                }
+            }
+        }
+        self.length += 1;
+    }
+
+	pub fn merge(mut list_a:LinkedList<T>,mut list_b:LinkedList<T>) -> Self
 	{
 		//TODO
-		Self {
-            length: 0,
-            start: None,
-            end: None,
+        let mut list_c = LinkedList::<T>::new();
+
+        while let (Some(a_head), Some(b_head)) = (list_a.start, list_b.start) {
+            unsafe {
+                let av = &a_head.as_ref().val;
+                let bv = &b_head.as_ref().val;
+                if av <= bv {
+                    let node = list_a.pop_front_node().unwrap();
+                    list_c.push_back_node(node);
+                } else {
+                    let node = list_b.pop_front_node().unwrap();
+                    list_c.push_back_node(node);
+                }
+            }
         }
-	}
+
+        while let Some(_) = list_a.start {
+            let node = list_a.pop_front_node().unwrap();
+            list_c.push_back_node(node);
+        }
+        while let Some(_) = list_b.start {
+            let node = list_b.pop_front_node().unwrap();
+            list_c.push_back_node(node);
+        }
+
+        list_c
+    }
 }
 
 impl<T> Display for LinkedList<T>
 where
-    T: Display,
+    T: Display + PartialOrd,
 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self.start {
@@ -92,9 +145,24 @@ where
     }
 }
 
+impl<T: PartialOrd> Drop for LinkedList<T> {
+    fn drop(&mut self) {
+        let mut cur = self.start.take();
+        while let Some(nn) = cur {
+            unsafe {
+                let raw = nn.as_ptr();
+                cur = (*raw).next.take();
+                drop(Box::from_raw(raw)); // 归还给分配器
+            }
+        }
+        self.end = None;
+        self.length = 0;
+    }
+}
+
 impl<T> Display for Node<T>
 where
-    T: Display,
+    T: Display + PartialOrd,
 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self.next {
